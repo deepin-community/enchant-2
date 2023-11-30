@@ -1,4 +1,4 @@
-AC_INIT([enchant],[2.3.2])
+AC_INIT([enchant],[2.3.3])
 AC_CONFIG_SRCDIR(src/enchant.h)
 AC_CONFIG_AUX_DIR([build-aux])
 AM_INIT_AUTOMAKE([subdir-objects])
@@ -36,7 +36,9 @@ AC_SUBST(ENCHANT_MINOR_VERSION)
 AC_SUBST(ENCHANT_MICRO_VERSION)
 
 dnl Checks for programs.
-AC_PROG_CC
+AC_PROG_CC_C99
+AS_IF([test "$ac_cv_prog_cc_c99" = no],
+  AC_MSG_ERROR([A C99 or later compiler is required]))
 gl_EARLY
 AC_PROG_CXX
 AX_CXX_COMPILE_STDCXX(11)
@@ -78,6 +80,8 @@ if test "$gl_gcc_warnings" = yes; then
   nw="$nw -Wconversion"       # These warnings usually don’t point to mistakes.
   nw="$nw -Wsign-conversion"  # Likewise.
   nw="$nw -Wimplicit-fallthrough=5" # We want to allow "fallthrough" comments.
+  nw="$nw -Wold-style-cast"   # Warning from glib macros like g_new0
+  nw="$nw -Wuseless-cast"     # Likewise
 
   gl_MANYWARN_ALL_GCC([warnings])
 
@@ -209,7 +213,7 @@ build_providers=
 
 dnl Standard providers
 ENCHANT_CHECK_PKG_CONFIG_PROVIDER([hunspell], [HUNSPELL])
-ENCHANT_CHECK_PKG_CONFIG_PROVIDER([nuspell], [NUSPELL], [nuspell >= 4.1.0])
+ENCHANT_CHECK_PKG_CONFIG_PROVIDER([nuspell], [NUSPELL], [nuspell >= 5.1.0])
 ENCHANT_CHECK_LIB_PROVIDER([aspell], [ASPELL], [get_aspell_dict_info_list])
 ENCHANT_CHECK_LIB_PROVIDER([hspell], [HSPELL], [hspell_get_dictionary_path],, [-lz])
 ENCHANT_CHECK_PKG_CONFIG_PROVIDER([voikko], [VOIKKO], [libvoikko])

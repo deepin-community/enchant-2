@@ -1,2 +1,4 @@
 version=4
-https://www.github.com/AbiWord/enchant/releases .*/enchant-([\d\.]*).tar.gz
+opts=searchmode=plain \
+https://api.github.com/repos/Abiword/enchant/releases \
+https://github.com/AbiWord/enchant/releases/download/v\d[\.\d]*/enchant-@ANY_VERSION@@ARCHIVE_EXT@

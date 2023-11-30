@@ -1,8 +1,21 @@
-enchant-2 (2.3.2-1deepin) unstable; urgency=medium
+enchant-2 (2.3.3-2) unstable; urgency=medium
 
-  [ LiChengGang ]
-  * 
- -- LiChengGang <lichenggang@uniontech.com>  Fri, 24 Feb 2023 11:25:55 +0800
+  * Add debian/upstream/metadata
+  * Update debian/watch
+
+ -- Jeremy Bicha <jbicha@ubuntu.com>  Mon, 12 Dec 2022 14:31:01 -0500
+
+enchant-2 (2.3.3-1) unstable; urgency=medium
+
+  [ Jeremy Bicha ]
+  * New upstream release
+  * Bump Standards-Version to 4.6.1
+  * Don't run the tests on i386 since it's a partial arch on Ubuntu
+
+  [ Sebastien Bacher ]
+  * Use the right syntax to exclude i386
+
+ -- Jeremy Bicha <jbicha@ubuntu.com>  Wed, 15 Jun 2022 11:56:06 -0400
 
 enchant-2 (2.3.2-1) unstable; urgency=medium
 
@@ -93,7 +106,7 @@ enchant (2.1.2-1~exp1) experimental; urgency=medium
   [ Timo Jyrinki ]
   * New upstream version.
   * Update watch file.
-  * Drop all patches, seem applied upstream or no longer relevant 
+  * Drop all patches, seem applied upstream or no longer relevant
     (eg ispell provider dropped)
   * Depend on and use gnulib, update configure options.
   * Drop docs that are no longer there.
@@ -160,7 +173,7 @@ enchant (1.6.0-8) experimental; urgency=low
     - Bump debhelper compat to level 9.
     - Add debhelper (>= 9).
     - Replace FLAGS,CPPFLAGS,LDFLAGS with dpkg-buildflags.
-    - Override false positive hardening-no-fortify-functions 
+    - Override false positive hardening-no-fortify-functions
       lintian warnings.
   * Multiarch support:
     - Add "Pre-Depends: ${misc:Pre-Depends}" for libenchant1c2a,
@@ -168,7 +181,7 @@ enchant (1.6.0-8) experimental; urgency=low
     - Add DEB_HOST_MULTIARCH and pass it to --libdir in configure.
     - Replace /usr/lib/ with /usr/lib/*/ in {libenchant1c2a,
       libenchant-dev,libenchant-voikko}.files and debian/rules.
-    - Add "Multi-Arch: same" for libenchant1c2a,libenchant-voikko. 
+    - Add "Multi-Arch: same" for libenchant1c2a,libenchant-voikko.
   * Use symbols file:
     - Add libenchant1c2a.symbols.
     - Add "dh_makeshlibs -V" in debian/rules.
@@ -586,4 +599,3 @@ enchant (0.4.0+cvs.2003.09.30-1) unstable; urgency=low
   * aspell, ispell and myspell are supported. uspell is not yet.
 
  -- Masayuki Hatta <mhatta@debian.org>  Tue, 30 Sep 2003 16:46:51 +0900
-

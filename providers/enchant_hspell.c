@@ -1,6 +1,7 @@
 /* enchant
  * Copyright (C) 2003 Yaacov Zamir
  * Copyright (C) 2004 Dom Lachowicz
+ * Copyright (C) 2017-2024 Reuben Thomas
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -9,15 +10,14 @@
  *
  * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the GNU
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the
- * Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
- * Boston, MA 02110-1301, USA.
+ * You should have received a copy of the GNU Lesser General Public License
+ * along along with this program; if not, see
+ * <https://www.gnu.org/licenses/>.
  *
- * In addition, as a special exception, Dom Lachowicz and Yaacov Zamir
+ * In addition, as a special exception, the copyright holders
  * give permission to link the code of this program with
  * non-LGPL Spelling Provider libraries (eg: a MSFT Office
  * spell checker backend) and distribute linked combinations including
@@ -43,6 +43,8 @@
 #include <hspell.h>
 
 #include "enchant-provider.h"
+
+#define HSPELL_MAIN_SUFFIX ".wgz"
 
 /**
  * convert struct corlist to **char
@@ -85,7 +87,10 @@ hspell_dict_check (EnchantDict * me, const char *const word, size_t len)
 {
 	struct dict_radix *hspell_dict = (struct dict_radix *)me->user_data;
 	char *iso_word = hspell_convert_to_iso8859_8 (me, word, len);
-	g_return_val_if_fail (iso_word, -1);
+	if (iso_word == NULL) {
+		g_warning ("%s: Can't convert word to iso8859-8", __FUNCTION__);
+		return -1;
+	}
 
 	/* check */
 	int preflen;
@@ -106,7 +111,10 @@ hspell_dict_suggest (EnchantDict * me, const char *const word,
 {
 	struct dict_radix *hspell_dict = (struct dict_radix *)me->user_data;
 	char *iso_word = hspell_convert_to_iso8859_8 (me, word, len);
-	g_return_val_if_fail (iso_word, NULL);
+	if (iso_word == NULL) {
+		g_warning ("%s: Can't convert word to iso8859-8", __FUNCTION__);
+		return NULL;
+	}
 
 	/* get suggestions */
 	struct corlist cl;
@@ -121,23 +129,72 @@ hspell_dict_suggest (EnchantDict * me, const char *const word,
 	return sugg_arr;
 }
 
+static GSList *
+hspell_provider_enum_dict_files (const char * const directory)
+{
+	GSList * out_dicts = NULL;
+	GDir * dir = g_dir_open (directory, 0, NULL);
+	if (dir) {
+		const char * entry;
+		while ((entry = g_dir_read_name (dir)) != NULL) {
+			char * utf8_entry = g_filename_to_utf8 (entry, -1, NULL, NULL, NULL);
+			if (utf8_entry && g_strrstr (utf8_entry, HSPELL_MAIN_SUFFIX) != NULL) {
+				char * dic = g_build_filename(directory, utf8_entry, NULL);
+				char * desc_file = g_strconcat(dic, ".desc", NULL);
+				if (g_file_test(desc_file, G_FILE_TEST_EXISTS) != 0) {
+					out_dicts = g_slist_append (out_dicts, dic);
+				} else
+					g_free (dic);
+				g_free (desc_file);
+			}
+			g_free (utf8_entry);
+		}
+
+		g_dir_close (dir);
+	}
+	return out_dicts;
+}
+
 static EnchantDict *
 hspell_provider_request_dict (EnchantProvider * me, const char *const tag)
 {
-	if(!((strlen(tag) >= 2) && tag[0] == 'h' && tag[1] == 'e'))
+	g_debug("hspell_provider_request_dict");
+	gboolean dict_found = FALSE;
+	char * user_dict_dir = enchant_provider_get_user_dict_dir (me);
+	GSList * dict_files = hspell_provider_enum_dict_files (user_dict_dir);
+	for (GSList * dict_file = dict_files;
+	     dict_file != NULL;
+	     dict_file = dict_file->next) {
+		gchar * dict_filename = (gchar *)dict_file->data;
+		gchar * basename = g_path_get_basename (dict_filename);
+		gchar * tag_end = g_strrstr (basename, HSPELL_MAIN_SUFFIX);
+		if (tag_end != NULL) {
+			*tag_end = '\0';
+			if (!strcmp (basename, tag)) {
+				hspell_set_dictionary_path (dict_filename);
+				g_free (basename);
+				dict_found = TRUE;
+				break;
+			}
+		}
+		g_free (basename);
+	}
+	g_free (user_dict_dir);
+	g_slist_free (dict_files);
+
+	if (dict_found == FALSE && strcmp (tag, "he") && strcmp (tag, "he_IL"))
 		return NULL;
 
-	/* try to set a new session */
 	struct dict_radix *hspell_dict = NULL;
 	int dict_flag = hspell_init (&hspell_dict, HSPELL_OPT_DEFAULT);
 
 	if (dict_flag != 0 || !hspell_dict)
 		{
-			enchant_provider_set_error (me, "can't create new dict.");
+			enchant_provider_set_error (me, "cannot get requested dictionary");
 			return NULL;
 		}
 
-	EnchantDict *dict = g_new0 (EnchantDict, 1);
+	EnchantDict *dict = enchant_broker_new_dict (me->owner);
 	dict->user_data = (void *) hspell_dict;
 	dict->check = hspell_dict_check;
 	dict->suggest = hspell_dict_suggest;
@@ -150,39 +207,39 @@ hspell_provider_dispose_dict (EnchantProvider * me _GL_UNUSED, EnchantDict * dic
 {
 	struct dict_radix *hspell_dict = (struct dict_radix *)dict->user_data;
 	hspell_uninit (hspell_dict);
-	g_free (dict);
 }
 
-/* test for the existence of, then return $prefix/share/hspell/hebrew.wgz */
+/* Find any user dictionaries, and test default dictionary. */
 
 static char **
-hspell_provider_list_dicts (EnchantProvider * me _GL_UNUSED,
-			    size_t * out_n_dicts)
+hspell_provider_list_dicts (EnchantProvider * me, size_t * out_n_dicts)
 {
-	const char * dictionary_path = hspell_get_dictionary_path();
-	char ** out_list = NULL;
 	*out_n_dicts = 0;
 
+	char * user_dict_dir = enchant_provider_get_user_dict_dir (me);
+	GSList * dict_files = hspell_provider_enum_dict_files (user_dict_dir);
+	guint n_user_dicts = g_slist_length (dict_files);
+	char ** out_list = g_new0 (char *, n_user_dicts + 3);
+	for (guint i = 0; i < n_user_dicts; i++) {
+		gchar * dict_file = g_slist_nth_data (dict_files, i);
+		gchar * basename = g_path_get_basename (dict_file);
+		gchar * tag_end = g_strrstr (basename, HSPELL_MAIN_SUFFIX);
+		if (tag_end != NULL) {
+			*tag_end = '\0';
+			out_list[(*out_n_dicts)++] = basename;
+		} else
+			g_free (basename);
+	}
+	g_free (user_dict_dir);
+	g_slist_free_full (dict_files, g_free);
+
+	const char * dictionary_path = hspell_get_dictionary_path();
 	if(dictionary_path && *dictionary_path && g_file_test (dictionary_path, G_FILE_TEST_EXISTS)) {
-		out_list = g_new0 (char *, 2);
 		out_list[(*out_n_dicts)++] = g_strdup ("he");
+		out_list[(*out_n_dicts)++] = g_strdup ("he_IL");
 	}
 
 	return out_list;
-}
-
-static int
-hspell_provider_dictionary_exists (struct str_enchant_provider * me,
-				   const char *const tag)
-{
-	(void)me;
-	return (!strcmp ("he", tag) || !strcmp ("he_IL", tag));
-}
-
-static void
-hspell_provider_dispose (EnchantProvider * me)
-{
-	g_free (me);
 }
 
 static const char *
@@ -202,11 +259,9 @@ EnchantProvider *init_enchant_provider (void);
 EnchantProvider *
 init_enchant_provider (void)
 {
-	EnchantProvider *provider = g_new0 (EnchantProvider, 1);
-	provider->dispose = hspell_provider_dispose;
+	EnchantProvider *provider = enchant_provider_new ();
 	provider->request_dict = hspell_provider_request_dict;
 	provider->dispose_dict = hspell_provider_dispose_dict;
-	provider->dictionary_exists = hspell_provider_dictionary_exists;
 	provider->identify = hspell_provider_identify;
 	provider->describe = hspell_provider_describe;
 	provider->list_dicts = hspell_provider_list_dicts;

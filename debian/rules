@@ -13,12 +13,9 @@ export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 
 override_dh_auto_configure:
 	dh_auto_configure -- --with-hunspell-dir=/usr/share/hunspell \
-                             --disable-zemberek
-
-override_dh_auto_build:
-	# Move the enchant.ordering to /usr/share/enchant-2 to be
-	# co-installable with enchant v1
-	dh_auto_build -- pkgdatadir=/usr/share/enchant-2
+			--docdir=/usr/share/doc/enchant-2 \
+			--enable-relocatable \
+			--disable-zemberek
 
 override_dh_makeshlibs:
 	dh_makeshlibs -Xusr/lib/$(DEB_HOST_MULTIARCH)/enchant-2/
@@ -30,9 +27,12 @@ execute_before_dh_install:
 override_dh_clean:
 	dh_clean -Xtests/test.pwl.orig
 
-# Tests don't work yet.
-# Skip test tests on i386 since Ubuntu doesn't have libunittest++-dev there
+# Ignore test failures on i386 since Ubuntu doesn't have libunittest++-dev there
+# Ignore test failures on some other architectures
+# https://github.com/rrthomas/enchant/issues/406
 override_dh_auto_test:
-ifeq (,$(filter $(DEB_HOST_ARCH),i386))
+ifneq (,$(filter $(DEB_HOST_ARCH),i386 ppc64el s390x ppc64 sparc64))
 	dh_auto_test || true
+else
+	dh_auto_test
 endif

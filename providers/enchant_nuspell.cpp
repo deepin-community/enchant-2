@@ -12,16 +12,15 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
  *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the
- * Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
- * Boston, MA 02110-1301, USA.
+ * You should have received a copy of the GNU Lesser General Public License
+ * along along with this program; if not, see
+ * <https://www.gnu.org/licenses/>.
  *
  * In addition, as a special exception, the copyright holders
  * give permission to link the code of this program with
  * non-LGPL Spelling Provider libraries (eg: a MSFT Office
  * spell checker backend) and distribute linked combinations including
- * the two.  You must obey the GNU General Public License in all
+ * the two.  You must obey the GNU Lesser General Public License in all
  * respects for all of the code used other than said providers.  If you modify
  * this file, you may extend this exception to your version of the
  * file, but you are not obligated to do so.  If you do not wish to
@@ -31,7 +30,7 @@
 /*
  * This is the Nuspell Enchant Backend.
  * Nuspell is by Dimitrij Mijoski and Sander van Geloven.
- * See: http://nuspell.github.io/
+ * See: https://nuspell.github.io/
  */
 
 #include "config.h"
@@ -83,14 +82,22 @@ static char** nuspell_dict_suggest(EnchantDict* me, const char* const word,
 // End EnchantDict functions
 
 // EnchantProvider functions
-static void nuspell_provider_dispose(EnchantProvider* me) { g_free(me); }
-
-static EnchantDict*
-nuspell_provider_request_dict(_GL_UNUSED EnchantProvider* me,
-                              const char* const tag)
+static vector<filesystem::path>
+nuspell_get_dict_dirs(EnchantProvider *me)
 {
 	auto dirs = vector<filesystem::path>();
+	char *dir = enchant_provider_get_user_dict_dir(me);
+	dirs.push_back(std::filesystem::u8path(dir));
+	g_free(dir);
 	nuspell::append_default_dir_paths(dirs);
+	return dirs;
+}
+
+static EnchantDict*
+nuspell_provider_request_dict(EnchantProvider* me,
+                              const char* const tag)
+{
+	auto dirs = nuspell_get_dict_dirs(me);
 	auto dic_path = nuspell::search_dirs_for_one_dict(dirs, tag);
 	if (empty(dic_path))
 		return nullptr;
@@ -103,7 +110,7 @@ nuspell_provider_request_dict(_GL_UNUSED EnchantProvider* me,
 		return nullptr;
 	}
 
-	EnchantDict* dict = g_new0(EnchantDict, 1);
+	EnchantDict* dict = enchant_broker_new_dict(me->owner);
 	dict->user_data = static_cast<void*>(dict_cpp.release());
 	dict->check = nuspell_dict_check;
 	dict->suggest = nuspell_dict_suggest;
@@ -115,15 +122,13 @@ static void nuspell_provider_dispose_dict(_GL_UNUSED EnchantProvider* me,
 {
 	auto dict_cpp = static_cast<nuspell::Dictionary*>(dict->user_data);
 	delete dict_cpp;
-	g_free(dict);
 }
 
 static int
-nuspell_provider_dictionary_exists(_GL_UNUSED EnchantProvider* me,
+nuspell_provider_dictionary_exists(EnchantProvider* me,
                                    const char* const tag)
 {
-	auto dirs = vector<filesystem::path>();
-	nuspell::append_default_dir_paths(dirs);
+	auto dirs = nuspell_get_dict_dirs(me);
 	auto dic_path = nuspell::search_dirs_for_one_dict(dirs, tag);
 	return !empty(dic_path);
 }
@@ -141,10 +146,12 @@ nuspell_provider_describe(_GL_UNUSED EnchantProvider* me)
 }
 
 static char**
-nuspell_provider_list_dicts(_GL_UNUSED EnchantProvider* me,
+nuspell_provider_list_dicts(EnchantProvider* me,
                             size_t* out_n_dicts)
 {
-	auto dicts = nuspell::search_default_dirs_for_dicts();
+	auto dirs = nuspell_get_dict_dirs(me);
+	auto dicts = vector<filesystem::path>();
+	nuspell::search_dirs_for_dicts(dirs, dicts);
 	if (empty(dicts)) {
 		*out_n_dicts = 0;
 		return nullptr;
@@ -174,8 +181,7 @@ extern "C" EnchantProvider* init_enchant_provider(void);
 EnchantProvider *
 init_enchant_provider (void)
 {
-	EnchantProvider *provider = g_new0(EnchantProvider, 1);
-	provider->dispose = nuspell_provider_dispose;
+	EnchantProvider *provider = enchant_provider_new ();
 	provider->request_dict = nuspell_provider_request_dict;
 	provider->dispose_dict = nuspell_provider_dispose_dict;
 	provider->dictionary_exists = nuspell_provider_dictionary_exists;

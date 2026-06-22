@@ -1,3 +1,39 @@
+enchant-2 (2.8.2+dfsg1-3) unstable; urgency=medium
+
+  * Ignore build test failures on ppc64el s390x ppc64 sparc64.
+    Previously test failures were ignored on all architectures
+    so this is ultimately still an improvement.
+
+ -- Jeremy Bícha <jbicha@ubuntu.com>  Wed, 22 Jan 2025 12:54:35 -0500
+
+enchant-2 (2.8.2+dfsg1-2) unstable; urgency=medium
+
+  * Opt into Salsa CI
+  * salsa-ci.yml: Opt out of locales reproducibility test
+  * Build with --enable-relocatable as required by build tests
+  * Don't ignore dh_auto_test failures (except on i386)
+
+ -- Jeremy Bícha <jbicha@ubuntu.com>  Thu, 16 Jan 2025 14:13:42 -0500
+
+enchant-2 (2.8.2+dfsg1-1) unstable; urgency=medium
+
+  * Team upload
+
+  [ Jeremy Bícha ]
+  * Stop using debian/control.in and dh-sequence-gnome
+
+  [ Alessandro Astone ]
+  * New upstream release (Closes: #1064456)
+  * Repack tarball excluding pre-compiled doxygen docs
+  * Update upstream owner
+  * Stop overwriting pkgdatadir, which was fixed upstream
+  * Install new manpage for section 5
+  * Build and install HTML manpages
+  * Update README path to README.md
+  * Update symbols file
+
+ -- Alessandro Astone <alessandro.astone@canonical.com>  Mon, 16 Dec 2024 12:22:47 +0100
+
 enchant-2 (2.3.3-2) unstable; urgency=medium
 
   * Add debian/upstream/metadata

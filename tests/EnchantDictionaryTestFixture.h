@@ -32,15 +32,13 @@
 #include <vector>
 
 static EnchantDict*
-MockProviderRequestEmptyMockDictionary(EnchantProvider *, const char *)
+MockProviderRequestEmptyMockDictionary(EnchantProvider *me, const char *)
 {
-    EnchantDict* dict = g_new0(EnchantDict, 1);
+    EnchantDict* dict = enchant_broker_new_dict(me->owner);
     dict->user_data = NULL;
     dict->check = NULL;
     dict->suggest = NULL;
-    dict->add_to_personal = NULL;
     dict->add_to_session = NULL;
-    dict->store_replacement = NULL;
 	
     return dict;
 }
@@ -163,7 +161,7 @@ struct EnchantDictionaryTestFixture : EnchantBrokerTestFixture
         return FileHasContents(GetExcludeDictFileName());
     }
 
-	bool BrokerPWLFileHasContents()
+    bool BrokerPWLFileHasContents()
     {
         return FileHasContents(_pwlFileName);
     }

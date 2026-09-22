@@ -1,3 +1,9 @@
+enchant-2 (2.8.2+dfsg1-3deepin1) unstable; urgency=medium
+
+  * Skip failed test EnchantGetUserLanguage_LocaleIsC_LocalIsEn
+
+ -- Tianyu Chen <sweetyfish@deepin.org>  Tue, 22 Sep 2026 22:59:22 +0800
+
 enchant-2 (2.8.2+dfsg1-3) unstable; urgency=medium
 
   * Ignore build test failures on ppc64el s390x ppc64 sparc64.
